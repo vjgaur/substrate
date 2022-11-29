@@ -250,22 +250,25 @@ pub mod pallet {
 			proxy_type: T::ProxyType,
 			delay: T::BlockNumber,
 		) -> DispatchResult {
-			
-			Self::remove_all_proxy_delegates(&who, delegate, proxy_type, delay)
+			let who = ensure_signed(origin)?;
+			let delegate = T::Lookup::lookup(delegate)?;
+			Self::remove_proxy_delegate(&who, delegate, proxy_type, delay)
 		}
 
-		
-		#[pallet::weight(T::WeightInfo::remove_all_proxy_delegates(T::MaxProxies::get()))]
-		pub fn pub remove_all_proxy_delegates(origin: OriginFor<T>,
-			delegate: AccountIdLookupOf<T>,
-			proxy_type: T::ProxyType,
-			delay: T::BlockNumber,
-		)-> DispatchResult{
-				let who = ensure_signed(origin)?;
-				let delegate = T::Lookup::lookup(delegate)?;
-				Self::remove_proxy_delegate(&who, delegate, proxy_type, delay)
-		}
+		/// Unregister all proxy accounts for the sender.
+		///
+		/// The dispatch origin for this call must be _Signed_.
+		///
+		/// WARNING: This may be called on accounts created by `pure`, however if done, then
+		/// the unreserved fees will be inaccessible. **All access to this account will be lost.**
+		#[pallet::weight(T::WeightInfo::remove_proxies(T::MaxProxies::get()))]
+		pub fn remove_proxies(origin: OriginFor<T>) -> DispatchResult {
+			let who = ensure_signed(origin)?;
+			let (_, old_deposit) = Proxies::<T>::take(&who);
+			T::Currency::unreserve(&who, old_deposit);
 
+			Ok(())
+		}
 
 		/// Unregister all proxy accounts for the sender.
 		///
